@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PDF Upload & Download (Supabase)</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 50px; }
+    .file-item { margin: 8px 0; display: flex; gap: 10px; align-items: center; }
+    .file-item a { flex: 1; color: blue; text-decoration: none; }
+    .file-item a:hover { text-decoration: underline; }
+    .delete-btn {
+      background: red; color: white; border: none; padding: 4px 8px;
+      border-radius: 4px; cursor: pointer;
+    }
+    .delete-btn:hover { background: darkred; }
+  </style>
+</head>
+<body>
+  <h2>Upload PDF Files</h2>
+  <input type="file" id="pdfInput" accept="application/pdf" multiple>
+  <h2>Available PDFs</h2>
+  <div id="fileList"></div>
+
+  <!-- Supabase JS Client -->
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script>
+    // 🔹 Replace with your Supabase credentials
+    const SUPABASE_URL = "https://puhfpxxfdvjwvlsxleub.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB1aGZweHhmZHZqd3Zsc3hsZXViIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgyMTU1NTMsImV4cCI6MjA3Mzc5MTU1M30.ikMog5THOs2gBMj95-Rwu6STYSTdqZ3_NKmxpW1Oznc";
+
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const pdfInput = document.getElementById("pdfInput");
+    const fileList = document.getElementById("fileList");
+
+    // Load files from bucket
+    async function loadFiles() {
+      fileList.innerHTML = "";
+      const { data, error } = await supabase.storage.from("pdfs").list("", { limit: 100 });
+      if (error) {
+        console.error(error);
+        return;
+      }
+      data.forEach(async (file) => {
+        const { data: urlData } = supabase.storage.from("pdfs").getPublicUrl(file.name);
+        addFileToList(file.name, urlData.publicUrl);
+      });
+    }
+
+    // Add file to UI
+    function addFileToList(name, url) {
+      const fileItem = document.createElement("div");
+      fileItem.classList.add("file-item");
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.target = "_blank";
+      link.textContent = name;
+
+      const deleteBtn = document.createElement("button");
+      deleteBtn.textContent = "Delete";
+      deleteBtn.classList.add("delete-btn");
+      deleteBtn.onclick = async () => {
+        await supabase.storage.from("pdfs").remove([name]);
+        fileItem.remove();
+      };
+
+      fileItem.appendChild(link);
+      fileItem.appendChild(deleteBtn);
+      fileList.appendChild(fileItem);
+    }
+
+    // Handle uploads
+    pdfInput.addEventListener("change", async function () {
+      const files = this.files;
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.type === "application/pdf") {
+          const { error } = await supabase.storage.from("pdfs").upload(file.name, file, {
+            upsert: true
+          });
+          if (!error) {
+            const { data: urlData } = supabase.storage.from("pdfs").getPublicUrl(file.name);
+            addFileToList(file.name, urlData.publicUrl);
+          }
+        } else {
+          alert(file.name + " is not a PDF.");
+        }
+      }
+      pdfInput.value = "";
+    });
+
+    // Load files on start
+    loadFiles();
+  </script>
+</body>
+</html>
