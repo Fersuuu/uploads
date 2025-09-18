@@ -47,30 +47,62 @@
       padding: 10px 15px;
       border-radius: 8px;
       transition: background 0.2s;
+      gap: 12px;
     }
     .file-item:hover {
       background: #eef5ff;
     }
-    .file-item a {
+    .file-info {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .file-info a {
       color: #4a90e2;
       text-decoration: none;
       font-weight: 500;
     }
-    .file-item a:hover {
+    .file-info a:hover {
       text-decoration: underline;
     }
+    .file-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .download-btn,
     .delete-btn {
-      background: #e74c3c;
-      color: white;
       border: none;
       padding: 6px 12px;
       border-radius: 6px;
       cursor: pointer;
       font-size: 14px;
+      color: white;
+      text-decoration: none;
       transition: background 0.2s;
+    }
+    .download-btn {
+      background: #2ecc71;
+    }
+    .download-btn:hover {
+      background: #27ae60;
+    }
+    .delete-btn {
+      background: #e74c3c;
     }
     .delete-btn:hover {
       background: #c0392b;
+    }
+
+    /* Mobile-friendly: stack buttons under filename */
+    @media (max-width: 480px) {
+      .file-item {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .file-actions {
+        margin-top: 8px;
+      }
     }
   </style>
 </head>
@@ -87,7 +119,7 @@
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <script>
     const SUPABASE_URL = "https://puhfpxxfdvjwvlsxleub.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB1aGZweHhmZHZqd3Zsc3hsZXViIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgyMTU1NTMsImV4cCI6MjA3Mzc5MTU1M30.ikMog5THOs2gBMj95-Rwu6STYSTdqZ3_NKmxpW1Oznc"; // ⚠️ Replace with your actual anon key
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB1aGZweHhmZHZqd3Zsc3hsZXViIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgyMTU1NTMsImV4cCI6MjA3Mzc5MTU1M30.ikMog5THOs2gBMj95-Rwu6STYSTdqZ3_NKmxpW1Oznc"; 
 
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     const fileInput = document.getElementById("fileInput");
@@ -110,11 +142,40 @@
       const fileItem = document.createElement("div");
       fileItem.classList.add("file-item");
 
+      const fileInfo = document.createElement("div");
+      fileInfo.classList.add("file-info");
+
       const link = document.createElement("a");
       link.href = url;
       link.target = "_blank";
       link.textContent = name;
+      fileInfo.appendChild(link);
 
+      const fileActions = document.createElement("div");
+      fileActions.classList.add("file-actions");
+
+      // ✅ Fixed Download button
+      const downloadBtn = document.createElement("button");
+      downloadBtn.textContent = "Download";
+      downloadBtn.classList.add("download-btn");
+      downloadBtn.onclick = async () => {
+        const { data, error } = await supabase.storage.from("pdfs").download(name);
+        if (error) {
+          alert("Download failed!");
+          console.error(error);
+          return;
+        }
+        const url = URL.createObjectURL(data);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      };
+
+      // Delete button
       const deleteBtn = document.createElement("button");
       deleteBtn.textContent = "Delete";
       deleteBtn.classList.add("delete-btn");
@@ -123,8 +184,12 @@
         fileItem.remove();
       };
 
-      fileItem.appendChild(link);
-      fileItem.appendChild(deleteBtn);
+      fileActions.appendChild(downloadBtn);
+      fileActions.appendChild(deleteBtn);
+
+      fileItem.appendChild(fileInfo);
+      fileItem.appendChild(fileActions);
+
       fileList.appendChild(fileItem);
     }
 
