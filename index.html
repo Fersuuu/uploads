@@ -3,11 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <title>File Upload & Download (Supabase)</title>
+
+  <!-- Font Awesome for file icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
   <style>
     body {
       font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
       margin: 0;
-      background: #f4f7fa;
+      background: #f9fffc; /* light green background */
       color: #333;
       display: flex;
       justify-content: center;
@@ -20,24 +24,53 @@
       padding: 30px;
       border-radius: 12px;
       box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
-      max-width: 600px;
+      max-width: 650px;
       width: 100%;
     }
     h2 {
       margin-bottom: 15px;
-      color: #222;
-      border-left: 4px solid #4a90e2;
-      padding-left: 10px;
+      color: #2e7d32;
     }
-    #fileInput {
-      display: block;
-      padding: 10px;
-      margin-bottom: 25px;
-      border: 1px solid #ccc;
+
+    /* Upload area like design */
+    .upload-area {
+  border: 2px dashed #66bb6a;
+  border-radius: 10px;
+  padding: 30px;
+  text-align: center;
+  margin-bottom: 25px;
+  background: #f1fff3;
+  cursor: pointer;
+  transition: background 0.3s, border-color 0.3s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+    .upload-area:hover {
+      background: #e6ffeb;
+      border-color: #43a047;
+    }
+    .upload-area input {
+      display: none;
+    }
+    .browse-btn {
+      margin-top: 10px;
+      display: inline-block;
+      background: #4caf50;
+      color: white;
+      padding: 8px 16px;
       border-radius: 6px;
-      width: 100%;
       cursor: pointer;
+      font-size: 14px;
+      transition: background 0.2s;
     }
+    .browse-btn:hover {
+      background: #388e3c;
+    }
+
+    /* File list styling */
     .file-item {
       margin: 8px 0;
       display: flex;
@@ -54,12 +87,15 @@
     }
     .file-info {
       flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 10px;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
     .file-info a {
-      color: #4a90e2;
+      color: #2e7d32;
       text-decoration: none;
       font-weight: 500;
     }
@@ -93,23 +129,19 @@
     .delete-btn:hover {
       background: #c0392b;
     }
-
-    /* Mobile-friendly: stack buttons under filename */
-    @media (max-width: 480px) {
-      .file-item {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-      .file-actions {
-        margin-top: 8px;
-      }
-    }
   </style>
 </head>
 <body>
   <div class="container">
     <h2>Upload Files (PDF & TXT)</h2>
-    <input type="file" id="fileInput" accept=".pdf,.txt" multiple>
+
+    <!-- Upload area -->
+    <label class="upload-area">
+  <i class="fa fa-cloud-upload-alt fa-3x" style="color:#4caf50; margin-bottom:10px;"></i>
+  <p style="margin: 8px 0; font-weight:500;">Drag and drop files here</p>
+  <span class="browse-btn">Browse Files</span>
+  <input type="file" id="fileInput" accept=".pdf,.txt" multiple>
+</label>
 
     <h2>Available Files</h2>
     <div id="fileList"></div>
@@ -119,7 +151,7 @@
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <script>
     const SUPABASE_URL = "https://puhfpxxfdvjwvlsxleub.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB1aGZweHhmZHZqd3Zsc3hsZXViIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgyMTU1NTMsImV4cCI6MjA3Mzc5MTU1M30.ikMog5THOs2gBMj95-Rwu6STYSTdqZ3_NKmxpW1Oznc"; 
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB1aGZweHhmZHZqd3Zsc3hsZXViIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgyMTU1NTMsImV4cCI6MjA3Mzc5MTU1M30.ikMog5THOs2gBMj95-Rwu6STYSTdqZ3_NKmxpW1Oznc";
 
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     const fileInput = document.getElementById("fileInput");
@@ -145,16 +177,28 @@
       const fileInfo = document.createElement("div");
       fileInfo.classList.add("file-info");
 
+      // icon based on file type
+      const icon = document.createElement("i");
+      if (name.endsWith(".pdf")) {
+        icon.className = "fa fa-file-pdf";
+        icon.style.color = "#e53935";
+      } else {
+        icon.className = "fa fa-file-alt";
+        icon.style.color = "#4a90e2";
+      }
+
       const link = document.createElement("a");
       link.href = url;
       link.target = "_blank";
       link.textContent = name;
+
+      fileInfo.appendChild(icon);
       fileInfo.appendChild(link);
 
       const fileActions = document.createElement("div");
       fileActions.classList.add("file-actions");
 
-      // ✅ Fixed Download button
+      // Download button
       const downloadBtn = document.createElement("button");
       downloadBtn.textContent = "Download";
       downloadBtn.classList.add("download-btn");
@@ -162,7 +206,6 @@
         const { data, error } = await supabase.storage.from("pdfs").download(name);
         if (error) {
           alert("Download failed!");
-          console.error(error);
           return;
         }
         const url = URL.createObjectURL(data);
